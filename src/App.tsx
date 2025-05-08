@@ -10,6 +10,20 @@ function App() {
   const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
+  // Base64 utility functions
+  const encodeContent = (content: string): string => {
+    return btoa(unescape(encodeURIComponent(content)));
+  };
+
+  const decodeContent = (encoded: string): string => {
+    try {
+      return decodeURIComponent(escape(atob(encoded)));
+    } catch (error) {
+      console.error("Failed to decode base64 content", error);
+      return "";
+    }
+  };
+
   // Load content and mode from URL on initial load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -22,8 +36,10 @@ function App() {
 
     if (contentParam) {
       try {
-        const decodedContent = decodeURIComponent(contentParam);
-        setMarkdown(decodedContent);
+        const decodedContent = decodeContent(contentParam);
+        if (decodedContent) {
+          setMarkdown(decodedContent);
+        }
       } catch (error) {
         console.error("Failed to decode content from URL", error);
       }
@@ -36,7 +52,7 @@ function App() {
   useEffect(() => {
     if (!initialLoadComplete) return;
 
-    const encodedMarkdown = encodeURIComponent(markdown);
+    const encodedMarkdown = encodeContent(markdown);
     const newUrl = `${window.location.pathname}?mode=${mode}&content=${encodedMarkdown}`;
     window.history.replaceState({}, "", newUrl);
   }, [markdown, mode, initialLoadComplete]);
