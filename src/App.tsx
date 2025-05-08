@@ -8,13 +8,7 @@ function App() {
     "# Hello, world!\n\nStart typing your markdown here..."
   );
   const [mode, setMode] = useState<"edit" | "preview">("edit");
-
-  // Update URL when content or mode changes
-  useEffect(() => {
-    const encodedMarkdown = encodeURIComponent(markdown);
-    const newUrl = `${window.location.pathname}?mode=${mode}&content=${encodedMarkdown}`;
-    window.history.replaceState({}, "", newUrl);
-  }, [markdown, mode]);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   // Load content and mode from URL on initial load
   useEffect(() => {
@@ -34,7 +28,18 @@ function App() {
         console.error("Failed to decode content from URL", error);
       }
     }
+
+    setInitialLoadComplete(true);
   }, []);
+
+  // Update URL when content or mode changes, but only after initial load
+  useEffect(() => {
+    if (!initialLoadComplete) return;
+
+    const encodedMarkdown = encodeURIComponent(markdown);
+    const newUrl = `${window.location.pathname}?mode=${mode}&content=${encodedMarkdown}`;
+    window.history.replaceState({}, "", newUrl);
+  }, [markdown, mode, initialLoadComplete]);
 
   const toggleMode = () => {
     setMode(mode === "edit" ? "preview" : "edit");

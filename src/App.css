@@ -19,9 +19,12 @@ body {
   color: var(--text-color);
   line-height: 1.5;
 }
+#root {
+  width: 100%;
+}
 
 .app-container {
-  max-width: 1200px;
+  /* max-width: 1200px; */
   margin: 0 auto;
   padding: 2rem;
   display: flex;
