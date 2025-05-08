@@ -1,0 +1,5 @@
+name = "markdown"
+compatibility_date = "2025-05-08"
+
+[site]
+bucket = "./dist"
