@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import MDEditor from "@uiw/react-md-editor";
 import copy from "copy-to-clipboard";
 import "./App.css";
@@ -9,6 +9,7 @@ function App() {
   );
   const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const debounceTimerRef = useRef<number | null>(null);
 
   // Base64 utility functions
   const encodeContent = (content: string): string => {
@@ -23,6 +24,27 @@ function App() {
       return "";
     }
   };
+
+  // Update URL with debouncing
+  const updateUrl = useCallback(
+    (newMarkdown: string, newMode: "edit" | "preview") => {
+      if (!initialLoadComplete) return;
+
+      // Clear any existing timer
+      if (debounceTimerRef.current) {
+        window.clearTimeout(debounceTimerRef.current);
+      }
+
+      // Set a new timer
+      debounceTimerRef.current = window.setTimeout(() => {
+        const encodedMarkdown = encodeContent(newMarkdown);
+        const newUrl = `${window.location.pathname}?mode=${newMode}&content=${encodedMarkdown}`;
+        window.history.replaceState({}, "", newUrl);
+        debounceTimerRef.current = null;
+      }, 500); // 500ms debounce delay
+    },
+    [initialLoadComplete]
+  );
 
   // Load content and mode from URL on initial load
   useEffect(() => {
@@ -48,18 +70,20 @@ function App() {
     setInitialLoadComplete(true);
   }, []);
 
-  // Update URL when content or mode changes, but only after initial load
-  useEffect(() => {
-    if (!initialLoadComplete) return;
+  const handleMarkdownChange = useCallback(
+    (value: string | undefined) => {
+      const newValue = value || "";
+      setMarkdown(newValue);
+      updateUrl(newValue, mode);
+    },
+    [mode, updateUrl]
+  );
 
-    const encodedMarkdown = encodeContent(markdown);
-    const newUrl = `${window.location.pathname}?mode=${mode}&content=${encodedMarkdown}`;
-    window.history.replaceState({}, "", newUrl);
-  }, [markdown, mode, initialLoadComplete]);
-
-  const toggleMode = () => {
-    setMode(mode === "edit" ? "preview" : "edit");
-  };
+  const toggleMode = useCallback(() => {
+    const newMode = mode === "edit" ? "preview" : "edit";
+    setMode(newMode);
+    updateUrl(markdown, newMode);
+  }, [markdown, mode, updateUrl]);
 
   const handleCopy = () => {
     copy(window.location.href);
@@ -83,7 +107,7 @@ function App() {
         {mode === "edit" ? (
           <MDEditor
             value={markdown}
-            onChange={(value) => setMarkdown(value || "")}
+            onChange={handleMarkdownChange}
             height={500}
             preview="edit"
           />
