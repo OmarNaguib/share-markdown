@@ -110,6 +110,7 @@ function App() {
             onChange={handleMarkdownChange}
             height={500}
             preview="edit"
+            highlightEnable={false}
           />
         ) : (
           <div className="preview-container">
