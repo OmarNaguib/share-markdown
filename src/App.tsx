@@ -39,17 +39,19 @@ function App() {
       // Set a new timer
       debounceTimerRef.current = window.setTimeout(() => {
         const encodedMarkdown = encodeContent(newMarkdown);
-        const newUrl = `${window.location.pathname}?mode=${newMode}&content=${encodedMarkdown}`;
-        window.history.replaceState({}, "", newUrl);
+        const newHash = `#mode=${newMode}&content=${encodedMarkdown}`;
+        window.location.hash = newHash;
         debounceTimerRef.current = null;
       }, 500); // 500ms debounce delay
     },
     [initialLoadComplete]
   );
 
-  // Load content and mode from URL on initial load
+  // Load content and mode from URL hash on initial load
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    // Remove the leading # if present
+    const hashContent = window.location.hash.substring(1);
+    const params = new URLSearchParams(hashContent);
     const modeParam = params.get("mode");
     const contentParam = params.get("content");
 
@@ -64,11 +66,37 @@ function App() {
           setMarkdown(decodedContent);
         }
       } catch (error) {
-        console.error("Failed to decode content from URL", error);
+        console.error("Failed to decode content from URL hash", error);
       }
     }
 
     setInitialLoadComplete(true);
+
+    // Add hash change listener to update state when hash changes
+    const handleHashChange = () => {
+      const newHashContent = window.location.hash.substring(1);
+      const newParams = new URLSearchParams(newHashContent);
+      const newMode = newParams.get("mode");
+      const newContent = newParams.get("content");
+
+      if (newMode === "edit" || newMode === "preview") {
+        setMode(newMode);
+      }
+
+      if (newContent) {
+        try {
+          const decodedContent = decodeContent(newContent);
+          if (decodedContent) {
+            setMarkdown(decodedContent);
+          }
+        } catch (error) {
+          console.error("Failed to decode content from URL hash", error);
+        }
+      }
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   const handleMarkdownChange = useCallback(
