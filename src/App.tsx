@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import MDEditor from "@uiw/react-md-editor";
 import copy from "copy-to-clipboard";
 import "./App.css";
+import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
 
 function App() {
   const [markdown, setMarkdown] = useState<string>(
@@ -13,12 +14,12 @@ function App() {
 
   // Base64 utility functions
   const encodeContent = (content: string): string => {
-    return btoa(unescape(encodeURIComponent(content)));
+    return compressToEncodedURIComponent(content);
   };
 
   const decodeContent = (encoded: string): string => {
     try {
-      return decodeURIComponent(escape(atob(encoded)));
+      return decompressFromEncodedURIComponent(encoded);
     } catch (error) {
       console.error("Failed to decode base64 content", error);
       return "";
@@ -87,7 +88,16 @@ function App() {
 
   const handleCopy = () => {
     copy(window.location.href);
-    alert("URL copied to clipboard!");
+    // Add a temporary "Copied!" message
+    const button = document.querySelector('.share-button');
+    const originalText = button?.textContent;
+    if (button) {
+      button.textContent = 'Copied!';
+      setTimeout(() => {
+      if (button && originalText) button.textContent = originalText;
+      }, 2000);
+    }
+    
   };
 
   return (
