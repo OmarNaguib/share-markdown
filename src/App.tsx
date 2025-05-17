@@ -2,29 +2,18 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import MDEditor from "@uiw/react-md-editor";
 import copy from "copy-to-clipboard";
 import "./App.css";
-import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
+import {
+  compressToEncodedURIComponent,
+  decompressFromEncodedURIComponent,
+} from "lz-string";
 
-function App() {
+export default function App() {
   const [markdown, setMarkdown] = useState<string>(
     "# Hello, world!\n\nStart typing your markdown here..."
   );
   const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const debounceTimerRef = useRef<number | null>(null);
-
-  // Base64 utility functions
-  const encodeContent = (content: string): string => {
-    return compressToEncodedURIComponent(content);
-  };
-
-  const decodeContent = (encoded: string): string => {
-    try {
-      return decompressFromEncodedURIComponent(encoded);
-    } catch (error) {
-      console.error("Failed to decode base64 content", error);
-      return "";
-    }
-  };
 
   // Update URL with debouncing
   const updateUrl = useCallback(
@@ -38,14 +27,27 @@ function App() {
 
       // Set a new timer
       debounceTimerRef.current = window.setTimeout(() => {
-        const encodedMarkdown = encodeContent(newMarkdown);
-        const newHash = `#mode=${newMode}&content=${encodedMarkdown}`;
-        window.location.hash = newHash;
+        compressAndUpdateBrowserUrl(newMarkdown, newMode);
+
         debounceTimerRef.current = null;
       }, 500); // 500ms debounce delay
     },
     [initialLoadComplete]
   );
+
+  const handleCopy = useCallback(() => {
+    compressAndUpdateBrowserUrl(markdown, mode);
+    copy(window.location.href);
+    // Add a temporary "Copied!" message
+    const button = document.querySelector(".share-button");
+    const originalText = button?.textContent;
+    if (button) {
+      button.textContent = "Copied!";
+      setTimeout(() => {
+        if (button && originalText) button.textContent = originalText;
+      }, 2000);
+    }
+  }, [markdown, mode]);
 
   // Load content and mode from URL hash on initial load
   useEffect(() => {
@@ -61,7 +63,7 @@ function App() {
 
     if (contentParam) {
       try {
-        const decodedContent = decodeContent(contentParam);
+        const decodedContent = decompressFromEncodedURIComponent(contentParam);
         if (decodedContent) {
           setMarkdown(decodedContent);
         }
@@ -85,7 +87,7 @@ function App() {
 
       if (newContent) {
         try {
-          const decodedContent = decodeContent(newContent);
+          const decodedContent = decompressFromEncodedURIComponent(newContent);
           if (decodedContent) {
             setMarkdown(decodedContent);
           }
@@ -98,6 +100,21 @@ function App() {
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
+
+  // Add Ctrl+S shortcut for sharing
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.key === "s") {
+        event.preventDefault(); // Prevent browser's default save action
+        handleCopy();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleCopy]);
 
   const handleMarkdownChange = useCallback(
     (value: string | undefined) => {
@@ -113,20 +130,6 @@ function App() {
     setMode(newMode);
     updateUrl(markdown, newMode);
   }, [markdown, mode, updateUrl]);
-
-  const handleCopy = () => {
-    copy(window.location.href);
-    // Add a temporary "Copied!" message
-    const button = document.querySelector('.share-button');
-    const originalText = button?.textContent;
-    if (button) {
-      button.textContent = 'Copied!';
-      setTimeout(() => {
-      if (button && originalText) button.textContent = originalText;
-      }, 2000);
-    }
-    
-  };
 
   return (
     <div className="app-container">
@@ -160,4 +163,11 @@ function App() {
   );
 }
 
-export default App;
+const compressAndUpdateBrowserUrl = (
+  newMarkdown: string,
+  newMode: "edit" | "preview"
+) => {
+  const encodedMarkdown = compressToEncodedURIComponent(newMarkdown);
+  const newHash = `#mode=${newMode}&content=${encodedMarkdown}`;
+  window.location.hash = newHash;
+};
